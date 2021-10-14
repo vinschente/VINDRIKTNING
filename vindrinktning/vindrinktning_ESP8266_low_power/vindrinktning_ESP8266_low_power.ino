@@ -35,21 +35,18 @@ uint16_t ppm10;
 
 void start_wifi(void)
 {
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
+  Serial.printf("Connecting to %s\n", ssid);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    Serial.printf(".");
   }
 
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.printf("\nWiFi connected\n");
+  Serial.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
 }
 
 void stop_wifi(void)
@@ -67,11 +64,9 @@ void setup_mqtt(void)
 
 void mqtt_reconnect(void) {
   while (!mqtt_client.connected()) {
-    Serial.println("MQTT connecting...");
+    Serial.printf("MQTT connecting...\n");
     if (!mqtt_client.connect("ESP8266Client")) {
-      Serial.print("failed, rc=");
-      Serial.print(mqtt_client.state());
-      Serial.println(" retrying in 5 seconds");
+      Serial.printf("failed, rc=%d, retrying in 5 seconds\n", mqtt_client.state());
       delay(5000);
     }
   }
@@ -79,7 +74,7 @@ void mqtt_reconnect(void) {
 
 void start_mqtt(void)
 {
-  Serial.println("Connecting to MQTT-Broker");
+  Serial.printf("Connecting to MQTT-Broker\n");
   if(!mqtt_client.connected()) {
     mqtt_reconnect();
   }
@@ -102,42 +97,36 @@ void send_mqtt(uint16_t ppm2_5, uint16_t ppm1_0, uint16_t ppm10)
 }
 
 void enter_DeepSleep(int time_S) {
-  Serial.print("Enter deep sleep for ");
-  Serial.println(time_S);
-  Serial.println("s");
+  Serial.printf("Enter deep sleep for %ds\n", time_S);
   ESP.deepSleep(time_S * 1000000);
   yield();
 }
 
 void PM1006_Readback(void) {
-  Serial.print("Waiting for new Data\n");
+  Serial.printf("Waiting for new Data\n");
   sSerial.begin(9600);
 
   while(1) {
     static unsigned long received_tick = 0;
     // send data only when you receive data:
     if (sSerial.available() > 0) {
-      //int incomingByte = sSerial.read();
-      //Serial.println(incomingByte, HEX);
       rxBuf[rxPos] = sSerial.read();
       rxPos++;
       received_tick = millis();
     }else if(received_tick + 50 < millis() && rxPos == 20) {
-      Serial.print("RX: ");
+      Serial.printf("RX: ");
       for(int i=0;i<rxPos;i++) {
-        Serial.print(rxBuf[i] < 16 ? "0" : "");
-        Serial.print(rxBuf[i], HEX);
-        Serial.print(" ");
+        Serial.printf("%02X ", rxBuf[i]);
       }
       
-      Serial.println();
+      Serial.printf("\n");
     
       ppm2_5 = rxBuf[5]<<8 | rxBuf[6];
       ppm1_0 = rxBuf[9]<<8 | rxBuf[10];
       ppm10 = rxBuf[13]<<8 | rxBuf[14];
-      Serial.print("PM2.5 :");Serial.println(ppm2_5);
-      Serial.print("PM1.0 :");Serial.println(ppm1_0);
-      Serial.print("PM10  :");Serial.println(ppm10);
+      Serial.printf("PM2.5 :%4d\n", ppm2_5);
+      Serial.printf("PM1.0 :%4d\n", ppm1_0);
+      Serial.printf("PM10  :%4d\n", ppm10);
       return;
     }else if(received_tick + 50 < millis())
     {
@@ -181,9 +170,9 @@ void check_wakeup_reason(void) {
 }
 
 void setup() {
-  // initialize serial:
   Serial.begin(9600);
-  Serial.print("IKEA Vindrinktning Logger\n");
+  Serial.printf("\nIKEA Vindrinktning Logger\n");
+
   check_wakeup_reason();
 
   stop_wifi();
