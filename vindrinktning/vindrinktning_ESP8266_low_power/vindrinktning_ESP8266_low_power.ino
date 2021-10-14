@@ -1,6 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <SoftwareSerial.h>
+#include <ArduinoOTA.h>
 
 #include "config.h"
 
@@ -26,6 +27,8 @@ const int sleepTimeS = 60;
 uint16_t ppm2_5;
 uint16_t ppm1_0;
 uint16_t ppm10;
+
+bool ota_in_progress = false;
 
 void start_wifi(void)
 {
@@ -167,6 +170,51 @@ void check_wakeup_reason(void) {
   }
 }
 
+void setup_OTA(void) {
+
+  ArduinoOTA.setHostname(OTA_HOSTNAME);
+  ArduinoOTA.setPort(OTA_PORT);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+
+  ArduinoOTA.onStart([]() {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";
+    } else { // U_FS
+      type = "filesystem";
+    }
+
+    // NOTE: if updating FS this would be the place to unmount FS using FS.end()
+    Serial.printf("Start updating %s\n", type.c_str());
+    ota_in_progress = true;
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.printf("End\n");
+    ota_in_progress = false;
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\n", (progress / (total / 100)));
+    ota_in_progress = true;
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Serial.printf("Auth Failed\n");
+    } else if (error == OTA_BEGIN_ERROR) {
+      Serial.printf("Begin Failed\n");
+    } else if (error == OTA_CONNECT_ERROR) {
+      Serial.printf("Connect Failed\n");
+    } else if (error == OTA_RECEIVE_ERROR) {
+      Serial.printf("Receive Failed\n");
+    } else if (error == OTA_END_ERROR) {
+      Serial.printf("End Failed\n");
+    }
+  });
+  ArduinoOTA.begin();
+
+  Serial.printf("OTA Handler started at % s: % d\n", OTA_HOSTNAME, OTA_PORT);
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.printf("\nIKEA Vindrinktning Logger\n");
@@ -195,9 +243,10 @@ void setup() {
 }
 
 void loop() {
-  // only enter loop to provide OTA option
+  // only enter loop to support OTA
+  ArduinoOTA.handle();
 
-  if(millis()/1000 > awakeTimeS_firstBoot) {
+  if (millis() / 1000 > awakeTimeS_firstBoot && !ota_in_progress) {
     stop_wifi();
     enter_DeepSleep(sleepTimeS);
   }
