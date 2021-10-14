@@ -2,6 +2,8 @@
 #include <PubSubClient.h>
 #include <SoftwareSerial.h>
 
+#include "config.h"
+
 #define MQTT_ENABLED 1
 
 // Connect to D2 on NodeMCU
@@ -9,12 +11,10 @@
 // Unused TX Ppin
 #define txPin 13
 
-const char* ssid     = "Your-WIFI-SSID";
-const char* password = "Your-WIFI-Password";
-const char* MQTT_BROKER = "mqtt-broker-ip";
-const int MQTT_PORT = 1883;
-const char* MQTT_PUB_TOPIC = "sensor/Vindrinktning/PM1006";
-const char * MQTT_CLIENT_ID = "Vindrinktning"
+const char* sta_ssid     = WIFI_STATION_SSID;
+const char* sta_password = WIFI_STATION_PASSWORD;
+const char* ap_ssid      = WIFI_AP_SSID;
+const char* ap_password  = WIFI_AP_PASSWORD;
 
 WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
@@ -35,10 +35,10 @@ uint16_t ppm10;
 
 void start_wifi(void)
 {
-  Serial.printf("Connecting to %s\n", ssid);
+  Serial.printf("Connecting to %s\n", sta_ssid);
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  WiFi.begin(sta_ssid, sta_password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -59,13 +59,13 @@ void stop_wifi(void)
 
 void setup_mqtt(void)
 {
-  mqtt_client.setServer(MQTT_BROKER, 1883);
+  mqtt_client.setServer(MQTT_BROKER_IP, MQTT_BROKER_PORT);
 }
 
 void mqtt_reconnect(void) {
   while (!mqtt_client.connected()) {
     Serial.printf("MQTT connecting...\n");
-    if (!mqtt_client.connect("ESP8266Client")) {
+    if (!mqtt_client.connect(MQTT_CLIENT_ID)) {
       Serial.printf("failed, rc=%d, retrying in 5 seconds\n", mqtt_client.state());
       delay(5000);
     }
@@ -74,8 +74,8 @@ void mqtt_reconnect(void) {
 
 void start_mqtt(void)
 {
-  Serial.printf("Connecting to MQTT-Broker\n");
   if(!mqtt_client.connected()) {
+  Serial.printf("Connecting to MQTT-Broker: %s:%d\n", MQTT_BROKER_IP, MQTT_BROKER_PORT);
     mqtt_reconnect();
   }
   mqtt_client.loop();
