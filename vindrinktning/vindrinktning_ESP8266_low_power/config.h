@@ -7,6 +7,7 @@
 #define WIFI_AP_PASSWORD "thx_IKEA"
 
 #define MQTT_BROKER_IP   "Your-Broker-IP"
+#define HOSTNAME "Vindrinktning"
 #define MQTT_BROKER_PORT 1883
 #define MQTT_CLIENT_ID   "Vindrinktning"
 #define MQTT_PUB_TOPIC   "sensor/Vindrinktning/PM1006"
