@@ -200,6 +200,6 @@ void loop() {
 
   if(millis()/1000 > awakeTimeS_firstBoot) {
     stop_wifi();
-    enter_DeepSleep(sleepTimeS / 1000);
+    enter_DeepSleep(sleepTimeS);
   }
 }
