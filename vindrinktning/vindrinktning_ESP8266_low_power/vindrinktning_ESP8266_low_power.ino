@@ -19,6 +19,9 @@ const char * MQTT_CLIENT_ID = "Vindrinktning"
 WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
 
+bool firstBoot = false;
+const int awakeTimeS_firstBoot = 5*60;
+
 // Time to sleep (in seconds):
 const int sleepTimeS = 60;
 
@@ -144,26 +147,70 @@ void PM1006_Readback(void) {
   }
 }
 
+void check_wakeup_reason(void) {
+  Serial.printf("Wakeup by: ");
+  
+  switch(ESP.getResetInfoPtr()->reason) {
+    case REASON_DEFAULT_RST:
+      Serial.print("Default\n");
+      firstBoot = true;
+      break;
+    case REASON_WDT_RST:
+      Serial.printf("Watchdog\n");
+      break;
+    case REASON_EXCEPTION_RST:
+      Serial.printf("Exception\n");
+      break;
+    case REASON_SOFT_WDT_RST:
+      Serial.printf("Soft Watchdog\n");
+      break;
+    case REASON_SOFT_RESTART:
+      Serial.printf("Soft Restart\n");
+      break;
+    case REASON_DEEP_SLEEP_AWAKE:
+      Serial.printf("Deep sleep\n");
+      break;
+    case REASON_EXT_SYS_RST:
+      Serial.printf("External System Reset\n");
+      firstBoot = true;
+      break;
+    default:
+      Serial.printf("Undefined\n");
+      break;
+  }
+}
+
 void setup() {
   // initialize serial:
   Serial.begin(9600);
   Serial.print("IKEA Vindrinktning Logger\n");
+  check_wakeup_reason();
 
   stop_wifi();
   setup_mqtt();
 
-  PM1006_Readback();
-
-  start_wifi();
+  if(firstBoot == true) {
+    start_wifi();
+  }else {
+    PM1006_Readback();
   
-  start_mqtt();
-  send_mqtt(ppm2_5, ppm1_0, ppm10);
-  stop_mqtt();
+    start_wifi();
+    
+    start_mqtt();
+    send_mqtt(ppm2_5, ppm1_0, ppm10);
+    stop_mqtt();
+    
+    stop_wifi();
   
-  stop_wifi();
-  
-  enter_DeepSleep(sleepTimeS - millis() / 1000);
+    enter_DeepSleep(sleepTimeS - millis() / 1000);
+  }
 }
 
 void loop() {
+  // only enter loop to provide OTA option
+
+  if(millis()/1000 > awakeTimeS_firstBoot) {
+    stop_wifi();
+    enter_DeepSleep(sleepTimeS / 1000);
+  }
 }
